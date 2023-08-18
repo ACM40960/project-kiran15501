@@ -37,9 +37,9 @@ library(caret)
 
 ```{r}
 #give appropriate path for data set 
-train_path = "/Users/kiransubramanians/final_project_new/Data/train"
-valid_path = "/Users/kiransubramanians/final_project_new/Data/valid"
-test_path = "/Users/kiransubramanians/final_project_new/Data/test"
+train_path = "/Data/train"
+valid_path = "/Data/valid"
+test_path = "/Data/test"
 ```
 
 
