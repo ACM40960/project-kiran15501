@@ -23,6 +23,9 @@ Lung cancer has been identified for an estimated 9.6 million fatalities in 2018 
 
 The dataset contains over a thousand low-dose CT images from high-risk patients in DICOM format. Due to a lack of computational power, The sample of the data is used to build and compare predictive models. Each image contains a series with multiple axial slices of the chest cavity. Each image has various 2D slices, varying based on the machine taking the scan and the patient. Data contain 3 chest cancer types: Adenocarcinoma, Large cell carcinoma, Squamous cell carcinoma, and 1 folder for the normal cell.
 
+### Need Preprosessing 
+
+The images in the data file are in the format (512, 512, z). ‘z’ represents the number of slices in the CT scan and varies depending on the resolution of the medical image scanner. Due to computational resource constraints, such huge images cannot be directly fed into Convolution Network structures. To overcome this limitation, The areas that are most likely to get cancer are narrowed down. This process is done by segmenting the lungs first using image processing methods and then deleting low-intensity regions. The segmentation of lung structures is a difficult task due to the lack of uniformity in the lung region, differing densities in the pulmonary structures, and the use of diverse scanners and scanning procedures.
 
 **Loading the necessary dataset and necessary packages**
 ```{r}
@@ -42,13 +45,13 @@ test_path = "/Users/kiransubramanians/final_project_new/Data/test"
 
 **For training, validation, and testing, images have been resized and imported into the model.**
 ```{r}
-# Install and load the required packages
+# seting the seed
 set.seed(22204657)
 
-# Define input shape and number of classes
+# number of output
 NUM_CLASSES <- 4
 
-# Define data generators
+# Define data generators for training
 train_datagen <- flow_images_from_directory(
   train_path,
   generator = image_data_generator(
@@ -66,6 +69,7 @@ train_datagen <- flow_images_from_directory(
   class_mode = "categorical"
 )
 
+# Define data generators for test
 test_datagen <- flow_images_from_directory(
   test_path,
   generator = image_data_generator(rescale = 1/255),
@@ -74,6 +78,7 @@ test_datagen <- flow_images_from_directory(
   class_mode = "categorical"
 )
 
+# Define data generators for validation
 validation_datagen <- flow_images_from_directory(
   valid_path,
   generator = image_data_generator(rescale = 1/255),
@@ -104,7 +109,7 @@ model1 <- keras_model_sequential() %>%
   
   compile(loss = "categorical_crossentropy", metrics = "accuracy",
           optimizer = optimizer_adam(learning_rate = 0.002))
-
+# model summary
 summary(model1)
 
 
@@ -337,6 +342,7 @@ for (layer in base_model$layers) {
   layer$trainable <- TRUE
 }
 
+#building the model
 predictions <- base_model$output %>% 
   layer_global_average_pooling_2d(trainable = T) %>% 
   layer_flatten() %>%
@@ -344,11 +350,13 @@ predictions <- base_model$output %>%
   layer_dense(units = 256, activation = "relu") %>%
   layer_dense(units = NUM_CLASSES, activation = "softmax")
 
+#creating the model inputs
 model <- keras_model(inputs = base_model$input, outputs = predictions)
 
-#This is important:
+#making the weights of the pre trained model train able
 for (layer in base_model$layers) layer$trainable = TRUE
 
+# adding the appropriate  optimizer and loss function
 optimizer <- optimizer_adam(learning_rate = 0.00001)
 model_4=model %>% compile(
   loss = "categorical_crossentropy",
@@ -365,9 +373,10 @@ checkpoint <- callback_model_checkpoint(
 )
 earlystop <- callback_early_stopping(patience = 10, verbose = 1)
 
-#
+#Summary of the model
 summary(model_4)
 
+#Fitting the pre trained model
 fit_augment <- model_4 %>% fit(
   train_datagen,
   validation_data = validation_datagen,
@@ -413,6 +422,7 @@ fill = cols, bty = "n")
 ```
 
 ```{r}
+#model evaluation with. respect to train and validation data
 cat("Training,Validation accuracy and loss : \n")
 model_4 %>% evaluate(train_datagen, train_datagen$classes, verbose = 0)
 model_4 %>% evaluate(validation_datagen, validation_datagen$classes, verbose = 0)
@@ -446,7 +456,7 @@ cat("accuracy for best model - ",scores_acc[2])
 
 
 ```{r}
-sensitivity_ = function(model, test_generator) {
+metrics_ = function(model, test_generator) {
     # Predict class labels for test set
     y_prob <- predict(model, test_generator)
   y_pred <- factor(apply(y_prob, 1, function(x) which.max(x)-1))
@@ -458,7 +468,8 @@ sensitivity_ = function(model, test_generator) {
 
 }
 
-sensitivity_(model_agumented_merged, test_datagen)
+# confusion matrix and other metrics
+metrics_(model_agumented_merged, test_datagen)
 ```
 
 
